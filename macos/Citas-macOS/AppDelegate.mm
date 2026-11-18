@@ -30,8 +30,20 @@
 
     NSView *rootView = self.window.contentViewController.view;
     if (rootView) {
+      if ([rootView respondsToSelector:@selector(setBackgroundColor:)]) {
+        [rootView performSelector:@selector(setBackgroundColor:) withObject:[NSColor clearColor]];
+      }
       rootView.wantsLayer = YES;
       rootView.layer.backgroundColor = [NSColor clearColor].CGColor;
+    }
+
+    NSScreen *screen = [NSScreen mainScreen];
+    if (screen) {
+      NSRect visibleFrame = [screen visibleFrame];
+      NSRect windowFrame = self.window.frame;
+      windowFrame.origin.x = visibleFrame.origin.x + 16;
+      windowFrame.origin.y = visibleFrame.origin.y + visibleFrame.size.height - windowFrame.size.height - 16;
+      [self.window setFrame:windowFrame display:YES];
     }
   }
 }

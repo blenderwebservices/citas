@@ -94,7 +94,7 @@ export const BeveledWindow: React.FC<BeveledWindowProps> = ({
     width: targetWidth,
     height: 300,
   });
-  const hasCenteredRef = useRef(false);
+  const hasPositionedRef = useRef(false);
 
   const bounds = useMemo(
     () =>
@@ -107,7 +107,7 @@ export const BeveledWindow: React.FC<BeveledWindowProps> = ({
         insetBottom: 0,
         insetLeft: 0,
         insetRight: 0,
-        margin: 12,
+        margin: 8,
       }),
     [screenWidth, screenHeight, windowSize.width, windowSize.height]
   );
@@ -117,14 +117,14 @@ export const BeveledWindow: React.FC<BeveledWindowProps> = ({
 
   const pan = useRef(
     new Animated.ValueXY({
-      x: Math.max(bounds.minX, (screenWidth - targetWidth) / 2),
-      y: Math.max(bounds.minY, (screenHeight - 300) / 2),
+      x: bounds.minX,
+      y: bounds.minY,
     })
   ).current;
 
   const currentPosRef = useRef({
-    x: Math.max(bounds.minX, (screenWidth - targetWidth) / 2),
-    y: Math.max(bounds.minY, (screenHeight - 300) / 2),
+    x: bounds.minX,
+    y: bounds.minY,
   });
   const dragStartRef = useRef({ x: 0, y: 0 });
 
@@ -199,8 +199,8 @@ export const BeveledWindow: React.FC<BeveledWindowProps> = ({
     if (width !== windowSize.width || height !== windowSize.height) {
       setWindowSize({ width, height });
     }
-    if (!hasCenteredRef.current) {
-      hasCenteredRef.current = true;
+    if (!hasPositionedRef.current) {
+      hasPositionedRef.current = true;
       const nextBounds = computeSafeDragBounds({
         screenWidth,
         screenHeight,
@@ -210,20 +210,12 @@ export const BeveledWindow: React.FC<BeveledWindowProps> = ({
         insetBottom: 0,
         insetLeft: 0,
         insetRight: 0,
-        margin: 12,
+        margin: 8,
       });
-      const centeredX = clampValue(
-        (screenWidth - width) / 2,
-        nextBounds.minX,
-        nextBounds.maxX
-      );
-      const centeredY = clampValue(
-        (screenHeight - height) / 2,
-        nextBounds.minY,
-        nextBounds.maxY
-      );
-      currentPosRef.current = { x: centeredX, y: centeredY };
-      pan.setValue({ x: centeredX, y: centeredY });
+      const initialX = nextBounds.minX;
+      const initialY = nextBounds.minY;
+      currentPosRef.current = { x: initialX, y: initialY };
+      pan.setValue({ x: initialX, y: initialY });
     }
   };
 
