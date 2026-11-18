@@ -1,5 +1,15 @@
 export type ThemeMode = 'light' | 'dark';
 
+export type QuoteApiSource = 'local' | 'github-cdn' | 'positive-api' | 'zenquotes';
+
+export interface ApiSourceOption {
+  id: QuoteApiSource;
+  name: string;
+  description: string;
+  lang: 'es' | 'en' | 'mixed';
+  badge: string;
+}
+
 export interface Quote {
   id: string;
   text: string;

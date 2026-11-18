@@ -6,6 +6,11 @@ cd "$ROOT_DIR"
 
 export NODE_BINARY="${NODE_BINARY:-$(command -v node)}"
 
+if [ ! -d "macos/Pods" ]; then
+  echo "▶ No se encontró macos/Pods. Instalando CocoaPods en macos/..."
+  pod install --project-directory=macos
+fi
+
 echo "▶ Compilando Citas-macOS (Release) con xcodebuild..."
 xcodebuild \
   -workspace macos/Citas.xcworkspace \

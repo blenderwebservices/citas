@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, StatusBar, StyleSheet, View } from 'react-native';
+import { StatusBar, StyleSheet, View } from 'react-native';
 import { BeveledWindow } from './src/components/BeveledWindow';
 import { RestoreWindowButton } from './src/components/RestoreWindowButton';
 import { SettingsPanel } from './src/components/SettingsPanel';
@@ -9,6 +9,8 @@ import { themes } from './src/theme/themes';
 export default function App() {
   const {
     theme: themeMode,
+    apiSource,
+    isLoadingQuote,
     selectedCategories,
     selectedAuthor,
     isWindowVisible,
@@ -25,19 +27,8 @@ export default function App() {
   const hasActiveFilters =
     selectedCategories.length > 0 || selectedAuthor !== null;
 
-  const handleBackdropPress = () => {
-    if (isSettingsOpen) {
-      setSettingsOpen(false);
-    } else if (!isWindowVisible) {
-      setWindowVisible(true);
-    }
-  };
-
   return (
-    <Pressable
-      onPress={handleBackdropPress}
-      style={[styles.backdrop, { backgroundColor: activeTheme.backdrop }]}
-    >
+    <View style={styles.backdrop} pointerEvents="box-none">
       <StatusBar
         barStyle={themeMode === 'dark' ? 'light-content' : 'dark-content'}
       />
@@ -56,6 +47,8 @@ export default function App() {
           quote={currentQuote}
           theme={activeTheme}
           hasActiveFilters={hasActiveFilters}
+          apiSource={apiSource}
+          isLoadingQuote={isLoadingQuote}
           onNextQuote={nextQuote}
           onOpenSettings={() => setSettingsOpen(true)}
           onClose={() => setWindowVisible(false)}
@@ -68,13 +61,14 @@ export default function App() {
         theme={activeTheme}
         onClose={() => setSettingsOpen(false)}
       />
-    </Pressable>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
+    backgroundColor: 'transparent',
   },
   restoreWrapper: {
     flex: 1,

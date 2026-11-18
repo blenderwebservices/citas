@@ -9,10 +9,10 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import quotesData from '../data/quotes.json';
+import { API_SOURCE_OPTIONS } from '../services/quotesApi';
 import { useQuotesStore } from '../store/useQuotesStore';
 import { AppTheme } from '../theme/themes';
-import { Quote } from '../types/quote';
+import { QuoteApiSource } from '../types/quote';
 import {
   extractAuthors,
   extractCategories,
@@ -25,8 +25,6 @@ interface SettingsPanelProps {
   onClose: () => void;
 }
 
-const ALL_QUOTES = quotesData as Quote[];
-
 export const SettingsPanel: React.FC<SettingsPanelProps> = ({
   visible,
   theme,
@@ -34,19 +32,27 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
 }) => {
   const {
     theme: themeMode,
+    apiSource,
     selectedCategories,
     selectedAuthor,
+    remoteQuotes,
+    isSyncingRemote,
+    setApiSource,
+    syncRemoteQuotes,
     toggleTheme,
     toggleCategory,
     setSelectedAuthor,
     clearFilters,
+    getActiveCatalog,
     getFilteredQuotes,
   } = useQuotesStore();
 
   const [authorQuery, setAuthorQuery] = useState('');
+  const [syncFeedback, setSyncFeedback] = useState<string | null>(null);
 
-  const categories = useMemo(() => extractCategories(ALL_QUOTES), []);
-  const authors = useMemo(() => extractAuthors(ALL_QUOTES), []);
+  const activeCatalog = getActiveCatalog();
+  const categories = useMemo(() => extractCategories(activeCatalog), [activeCatalog]);
+  const authors = useMemo(() => extractAuthors(activeCatalog), [activeCatalog]);
 
   const filteredAuthors = useMemo(() => {
     const q = normalizeText(authorQuery);
@@ -57,6 +63,17 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
   const matchingCount = getFilteredQuotes().length;
   const hasActiveFilters =
     selectedCategories.length > 0 || selectedAuthor !== null;
+
+  const handleSyncPress = async () => {
+    setSyncFeedback('Sincronizando...');
+    const count = await syncRemoteQuotes();
+    if (count > 0) {
+      setSyncFeedback(`¡Listo! ${count} citas sincronizadas`);
+    } else {
+      setSyncFeedback('Sin conexión o error al conectar');
+    }
+    setTimeout(() => setSyncFeedback(null), 3500);
+  };
 
   return (
     <Modal
@@ -99,7 +116,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
                 ⚙
               </Text>
               <Text style={[styles.headerTitle, { color: theme.textPrimary }]}>
-                Ajustes y Filtros
+                Ajustes y Fuente de Citas
               </Text>
             </View>
             <Pressable
@@ -136,7 +153,159 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
             contentContainerStyle={styles.scrollContent}
             showsVerticalScrollIndicator={false}
           >
-            {/* Theme Selector */}
+            {/* Fuente de Citas / API */}
+            <View style={styles.section}>
+              <Text style={[styles.sectionTitle, { color: theme.textMuted }]}>
+                FUENTE DE CITAS (API)
+              </Text>
+
+              <View style={styles.apiList}>
+                {API_SOURCE_OPTIONS.map((opt) => {
+                  const isSelected = apiSource === opt.id;
+                  return (
+                    <Pressable
+                      key={opt.id}
+                      onPress={() => setApiSource(opt.id as QuoteApiSource)}
+                      style={({ pressed }) => [
+                        styles.apiOption,
+                        {
+                          backgroundColor: isSelected
+                            ? theme.windowInnerBg
+                            : theme.buttonBg,
+                          borderTopColor: isSelected
+                            ? theme.innerBevelShadow
+                            : pressed
+                            ? theme.buttonBorderDark
+                            : theme.buttonBorderLight,
+                          borderLeftColor: isSelected
+                            ? theme.innerBevelShadow
+                            : pressed
+                            ? theme.buttonBorderDark
+                            : theme.buttonBorderLight,
+                          borderBottomColor: isSelected
+                            ? theme.innerBevelHighlight
+                            : pressed
+                            ? theme.buttonBorderLight
+                            : theme.buttonBorderDark,
+                          borderRightColor: isSelected
+                            ? theme.innerBevelHighlight
+                            : pressed
+                            ? theme.buttonBorderLight
+                            : theme.buttonBorderDark,
+                        },
+                      ]}
+                    >
+                      <View style={styles.apiHeaderRow}>
+                        <View style={styles.apiTitleGroup}>
+                          <Text
+                            style={[
+                              styles.apiRadio,
+                              { color: isSelected ? theme.accent : theme.textMuted },
+                            ]}
+                          >
+                            {isSelected ? '●' : '○'}
+                          </Text>
+                          <Text
+                            style={[
+                              styles.apiName,
+                              {
+                                color: isSelected
+                                  ? theme.accent
+                                  : theme.textPrimary,
+                              },
+                            ]}
+                          >
+                            {opt.name}
+                          </Text>
+                        </View>
+                        <View
+                          style={[
+                            styles.badge,
+                            {
+                              backgroundColor: isSelected
+                                ? theme.accent
+                                : theme.divider,
+                            },
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.badgeText,
+                              {
+                                color: isSelected
+                                  ? '#FFFFFF'
+                                  : theme.textMuted,
+                              },
+                            ]}
+                          >
+                            {opt.badge}
+                          </Text>
+                        </View>
+                      </View>
+                      <Text
+                        style={[styles.apiDesc, { color: theme.textMuted }]}
+                      >
+                        {opt.description}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+
+              {/* Botón de Sincronización para GitHub CDN */}
+              {apiSource === 'github-cdn' && (
+                <View style={styles.syncContainer}>
+                  <Pressable
+                    disabled={isSyncingRemote}
+                    onPress={handleSyncPress}
+                    style={({ pressed }) => [
+                      styles.syncButton,
+                      {
+                        backgroundColor: theme.buttonBg,
+                        borderTopColor: pressed
+                          ? theme.buttonBorderDark
+                          : theme.buttonBorderLight,
+                        borderLeftColor: pressed
+                          ? theme.buttonBorderDark
+                          : theme.buttonBorderLight,
+                        borderBottomColor: pressed
+                          ? theme.buttonBorderLight
+                          : theme.buttonBorderDark,
+                        borderRightColor: pressed
+                          ? theme.buttonBorderLight
+                          : theme.buttonBorderDark,
+                      },
+                    ]}
+                  >
+                    <Text style={[styles.syncButtonText, { color: theme.accent }]}>
+                      {isSyncingRemote ? '⏳ Sincronizando catálogo...' : '↻ Sincronizar catálogo ahora'}
+                    </Text>
+                  </Pressable>
+                  {syncFeedback && (
+                    <Text
+                      style={[styles.syncFeedback, { color: theme.accent }]}
+                    >
+                      {syncFeedback}
+                    </Text>
+                  )}
+                  {remoteQuotes.length > 0 && !syncFeedback && (
+                    <Text
+                      style={[styles.syncFeedback, { color: theme.textMuted }]}
+                    >
+                      {remoteQuotes.length} citas disponibles en caché
+                    </Text>
+                  )}
+                </View>
+              )}
+
+              {(apiSource === 'positive-api' || apiSource === 'zenquotes') && (
+                <Text style={[styles.liveNote, { color: theme.textMuted }]}>
+                  ⚡ Modo en vivo: cada vez que pulses [ ↻ ] en la ventana principal, se consultará una nueva cita directamente de la API.
+                </Text>
+              )}
+            </View>
+
+            {/* Apariencia */}
             <View style={styles.section}>
               <Text style={[styles.sectionTitle, { color: theme.textMuted }]}>
                 APARIENCIA
@@ -182,220 +351,214 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
               </View>
             </View>
 
-            {/* Category Filters */}
-            <View style={styles.section}>
-              <View style={styles.sectionHeaderRow}>
-                <Text style={[styles.sectionTitle, { color: theme.textMuted }]}>
-                  CATEGORÍAS
-                </Text>
-                {hasActiveFilters && (
-                  <Pressable onPress={clearFilters}>
-                    <Text style={[styles.clearText, { color: theme.accent }]}>
-                      Limpiar filtros
-                    </Text>
-                  </Pressable>
-                )}
-              </View>
-              <View style={styles.chipsGrid}>
-                {categories.map((category) => {
-                  const isSelected = selectedCategories.some(
-                    (c) => normalizeText(c) === normalizeText(category)
-                  );
-                  return (
-                    <Pressable
-                      key={category}
-                      onPress={() => toggleCategory(category)}
-                      style={[
-                        styles.chip,
-                        {
-                          backgroundColor: isSelected
-                            ? theme.accent
-                            : theme.buttonBg,
-                          borderTopColor: isSelected
-                            ? theme.accent
-                            : theme.buttonBorderLight,
-                          borderLeftColor: isSelected
-                            ? theme.accent
-                            : theme.buttonBorderLight,
-                          borderBottomColor: isSelected
-                            ? theme.accent
-                            : theme.buttonBorderDark,
-                          borderRightColor: isSelected
-                            ? theme.accent
-                            : theme.buttonBorderDark,
-                        },
-                      ]}
-                    >
-                      <Text
-                        style={[
-                          styles.chipCheck,
-                          {
-                            color: isSelected
-                              ? theme.accentText
-                              : theme.textMuted,
-                          },
-                        ]}
-                      >
-                        {isSelected ? '☑' : '☐'}
-                      </Text>
-                      <Text
-                        style={[
-                          styles.chipText,
-                          {
-                            color: isSelected
-                              ? theme.accentText
-                              : theme.textPrimary,
-                          },
-                        ]}
-                      >
-                        {category}
+            {/* Filtros por Categorías */}
+            {categories.length > 0 && (
+              <View style={styles.section}>
+                <View style={styles.sectionHeaderRow}>
+                  <Text style={[styles.sectionTitle, { color: theme.textMuted }]}>
+                    CATEGORÍAS
+                  </Text>
+                  {hasActiveFilters && (
+                    <Pressable onPress={clearFilters}>
+                      <Text style={[styles.clearText, { color: theme.accent }]}>
+                        Limpiar filtros
                       </Text>
                     </Pressable>
-                  );
-                })}
-              </View>
-            </View>
-
-            {/* Author Filter */}
-            <View style={styles.section}>
-              <Text style={[styles.sectionTitle, { color: theme.textMuted }]}>
-                FILTRAR POR AUTOR
-              </Text>
-              <View
-                style={[
-                  styles.searchBox,
-                  {
-                    backgroundColor: theme.inputBg,
-                    borderColor: theme.inputBorder,
-                  },
-                ]}
-              >
-                <Text style={[styles.searchIcon, { color: theme.textMuted }]}>
-                  ⌕
-                </Text>
-                <TextInput
-                  value={authorQuery}
-                  onChangeText={setAuthorQuery}
-                  placeholder="Buscar autor..."
-                  placeholderTextColor={theme.textMuted}
-                  style={[styles.searchInput, { color: theme.textPrimary }]}
-                />
-                {authorQuery.length > 0 && (
-                  <Pressable onPress={() => setAuthorQuery('')}>
-                    <Text style={[styles.clearInput, { color: theme.textMuted }]}>
-                      ✕
-                    </Text>
-                  </Pressable>
-                )}
-              </View>
-
-              <View
-                style={[
-                  styles.authorsList,
-                  {
-                    backgroundColor: theme.windowInnerBg,
-                    borderTopColor: theme.innerBevelShadow,
-                    borderLeftColor: theme.innerBevelShadow,
-                    borderBottomColor: theme.innerBevelHighlight,
-                    borderRightColor: theme.innerBevelHighlight,
-                  },
-                ]}
-              >
-                <ScrollView nestedScrollEnabled style={styles.authorsScroll}>
-                  <Pressable
-                    onPress={() => setSelectedAuthor(null)}
-                    style={[
-                      styles.authorItem,
-                      { borderBottomColor: theme.divider },
-                      selectedAuthor === null && {
-                        backgroundColor: theme.tagBg,
-                      },
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.authorItemText,
-                        {
-                          color:
-                            selectedAuthor === null
-                              ? theme.accent
-                              : theme.textPrimary,
-                          fontWeight: selectedAuthor === null ? '600' : '400',
-                        },
-                      ]}
-                    >
-                      Todos los autores
-                    </Text>
-                    {selectedAuthor === null && (
-                      <Text style={{ color: theme.accent, fontWeight: '700' }}>
-                        ✓
-                      </Text>
-                    )}
-                  </Pressable>
-
-                  {filteredAuthors.map((author) => {
-                    const isSelected = selectedAuthor === author;
+                  )}
+                </View>
+                <View style={styles.chipsGrid}>
+                  {categories.map((category) => {
+                    const isSelected = selectedCategories.some(
+                      (c) => normalizeText(c) === normalizeText(category)
+                    );
                     return (
                       <Pressable
-                        key={author}
-                        onPress={() =>
-                          setSelectedAuthor(isSelected ? null : author)
-                        }
+                        key={category}
+                        onPress={() => toggleCategory(category)}
                         style={[
-                          styles.authorItem,
-                          { borderBottomColor: theme.divider },
-                          isSelected && { backgroundColor: theme.tagBg },
+                          styles.chip,
+                          {
+                            backgroundColor: isSelected
+                              ? theme.accent
+                              : theme.buttonBg,
+                            borderTopColor: isSelected
+                              ? theme.accent
+                              : theme.buttonBorderLight,
+                            borderLeftColor: isSelected
+                              ? theme.accent
+                              : theme.buttonBorderLight,
+                            borderBottomColor: isSelected
+                              ? theme.accent
+                              : theme.buttonBorderDark,
+                            borderRightColor: isSelected
+                              ? theme.accent
+                              : theme.buttonBorderDark,
+                          },
                         ]}
                       >
                         <Text
                           style={[
-                            styles.authorItemText,
+                            styles.chipText,
                             {
                               color: isSelected
-                                ? theme.accent
+                                ? '#FFFFFF'
                                 : theme.textPrimary,
-                              fontWeight: isSelected ? '600' : '400',
                             },
                           ]}
                         >
-                          {author}
+                          #{category}
                         </Text>
-                        {isSelected && (
-                          <Text
-                            style={{ color: theme.accent, fontWeight: '700' }}
-                          >
-                            ✓
-                          </Text>
-                        )}
                       </Pressable>
                     );
                   })}
-                  {filteredAuthors.length === 0 && (
-                    <Text
-                      style={[styles.emptyAuthors, { color: theme.textMuted }]}
-                    >
-                      No se encontraron autores con "{authorQuery}"
-                    </Text>
-                  )}
-                </ScrollView>
+                </View>
               </View>
-            </View>
+            )}
+
+            {/* Filtro por Autor */}
+            {authors.length > 0 && (
+              <View style={styles.section}>
+                <Text style={[styles.sectionTitle, { color: theme.textMuted }]}>
+                  FILTRAR POR AUTOR
+                </Text>
+
+                <View
+                  style={[
+                    styles.searchBox,
+                    {
+                      backgroundColor: theme.windowInnerBg,
+                      borderColor: theme.divider,
+                    },
+                  ]}
+                >
+                  <Text style={[styles.searchIcon, { color: theme.textMuted }]}>
+                    🔍
+                  </Text>
+                  <TextInput
+                    value={authorQuery}
+                    onChangeText={setAuthorQuery}
+                    placeholder="Buscar autor..."
+                    placeholderTextColor={theme.textMuted}
+                    style={[styles.searchInput, { color: theme.textPrimary }]}
+                  />
+                  {authorQuery.length > 0 && (
+                    <Pressable onPress={() => setAuthorQuery('')}>
+                      <Text
+                        style={[styles.clearInput, { color: theme.textMuted }]}
+                      >
+                        ✕
+                      </Text>
+                    </Pressable>
+                  )}
+                </View>
+
+                <View
+                  style={[
+                    styles.authorsList,
+                    {
+                      backgroundColor: theme.windowInnerBg,
+                      borderTopColor: theme.innerBevelShadow,
+                      borderLeftColor: theme.innerBevelShadow,
+                      borderBottomColor: theme.innerBevelHighlight,
+                      borderRightColor: theme.innerBevelHighlight,
+                    },
+                  ]}
+                >
+                  <ScrollView
+                    nestedScrollEnabled
+                    style={styles.authorsScroll}
+                    showsVerticalScrollIndicator
+                  >
+                    <Pressable
+                      onPress={() => setSelectedAuthor(null)}
+                      style={[
+                        styles.authorItem,
+                        {
+                          borderBottomColor: theme.divider,
+                          backgroundColor:
+                            selectedAuthor === null
+                              ? theme.accent + '22'
+                              : 'transparent',
+                        },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.authorItemText,
+                          {
+                            color:
+                              selectedAuthor === null
+                                ? theme.accent
+                                : theme.textPrimary,
+                            fontWeight:
+                              selectedAuthor === null ? '700' : '400',
+                          },
+                        ]}
+                      >
+                        Todos los autores
+                      </Text>
+                      {selectedAuthor === null && (
+                        <Text style={{ color: theme.accent }}>✓</Text>
+                      )}
+                    </Pressable>
+
+                    {filteredAuthors.map((author) => {
+                      const isSelected = selectedAuthor === author;
+                      return (
+                        <Pressable
+                          key={author}
+                          onPress={() =>
+                            setSelectedAuthor(isSelected ? null : author)
+                          }
+                          style={[
+                            styles.authorItem,
+                            {
+                              borderBottomColor: theme.divider,
+                              backgroundColor: isSelected
+                                ? theme.accent + '22'
+                                : 'transparent',
+                            },
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.authorItemText,
+                              {
+                                color: isSelected
+                                  ? theme.accent
+                                  : theme.textPrimary,
+                                fontWeight: isSelected ? '700' : '400',
+                              },
+                            ]}
+                          >
+                            {author}
+                          </Text>
+                          {isSelected && (
+                            <Text style={{ color: theme.accent }}>✓</Text>
+                          )}
+                        </Pressable>
+                      );
+                    })}
+                  </ScrollView>
+                </View>
+              </View>
+            )}
           </ScrollView>
 
-          {/* Footer status */}
+          {/* Footer */}
           <View
             style={[
               styles.footer,
               {
-                borderTopColor: theme.divider,
                 backgroundColor: theme.titleBarBg,
+                borderTopColor: theme.divider,
               },
             ]}
           >
-            <Text style={[styles.footerText, { color: theme.textSecondary }]}>
-              {matchingCount === 1
-                ? '1 cita coincide con los filtros'
-                : `${matchingCount} citas coinciden con los filtros`}
+            <Text style={[styles.footerText, { color: theme.textMuted }]}>
+              {matchingCount > 0
+                ? `${matchingCount} citas coinciden con los filtros actuales`
+                : 'Ninguna cita coincide con los filtros'}
             </Text>
           </View>
         </Pressable>
@@ -407,15 +570,15 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.42)',
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
+    padding: 16,
   },
   panelOuter: {
     width: '100%',
     maxWidth: 420,
-    maxHeight: '82%',
+    maxHeight: '85%',
     borderWidth: 2,
     borderRadius: 4,
     shadowOffset: { width: 0, height: 12 },
@@ -441,50 +604,118 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   headerTitle: {
-    fontWeight: '600',
+    fontWeight: '700',
     fontSize: 14,
+    letterSpacing: 0.3,
   },
   closeBtn: {
-    width: 28,
-    height: 28,
-    alignItems: 'center',
-    justifyContent: 'center',
     borderWidth: 1.5,
     borderRadius: 2,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
   },
   closeBtnText: {
-    fontSize: 13,
     fontWeight: '700',
+    fontSize: 11,
   },
   scrollBody: {
-    flexGrow: 0,
+    flex: 1,
   },
   scrollContent: {
-    padding: 16,
-    gap: 20,
+    padding: 14,
+    gap: 16,
   },
   section: {
-    gap: 10,
+    gap: 8,
   },
   sectionHeaderRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    justifyContent: 'space-between',
   },
   sectionTitle: {
-    fontWeight: '600',
+    fontWeight: '700',
     fontSize: 11,
-    letterSpacing: 1,
+    letterSpacing: 0.8,
   },
   clearText: {
-    fontWeight: '500',
+    fontSize: 11,
+    fontWeight: '600',
+    textDecorationLine: 'underline',
+  },
+  apiList: {
+    gap: 8,
+  },
+  apiOption: {
+    borderWidth: 1.5,
+    borderRadius: 3,
+    padding: 10,
+    gap: 4,
+  },
+  apiHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  apiTitleGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  apiRadio: {
+    fontSize: 14,
+  },
+  apiName: {
+    fontWeight: '700',
+    fontSize: 13,
+  },
+  badge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 3,
+  },
+  badgeText: {
+    fontWeight: '700',
+    fontSize: 10,
+    letterSpacing: 0.4,
+  },
+  apiDesc: {
+    fontSize: 11,
+    lineHeight: 15,
+    paddingLeft: 22,
+  },
+  syncContainer: {
+    marginTop: 4,
+    gap: 4,
+  },
+  syncButton: {
+    borderWidth: 1.5,
+    borderRadius: 3,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    alignItems: 'center',
+  },
+  syncButtonText: {
+    fontWeight: '600',
     fontSize: 12,
+  },
+  syncFeedback: {
+    fontSize: 11,
+    textAlign: 'center',
+    fontWeight: '500',
+  },
+  liveNote: {
+    fontSize: 11,
+    lineHeight: 15,
+    fontStyle: 'italic',
+    marginTop: 2,
   },
   settingRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
     borderWidth: 1.5,
     borderRadius: 2,
   },
@@ -492,11 +723,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    flex: 1,
-    paddingRight: 8,
   },
   themeIcon: {
-    fontSize: 18,
+    fontSize: 16,
   },
   settingLabel: {
     fontWeight: '600',
@@ -512,21 +741,14 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   chip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
     paddingHorizontal: 10,
-    paddingVertical: 7,
+    paddingVertical: 6,
     borderWidth: 1.5,
     borderRadius: 2,
   },
-  chipCheck: {
-    fontSize: 13,
-  },
   chipText: {
     fontWeight: '500',
-    fontSize: 13,
-    textTransform: 'capitalize',
+    fontSize: 12,
   },
   searchBox: {
     flexDirection: 'row',
@@ -538,7 +760,7 @@ const styles = StyleSheet.create({
     borderRadius: 2,
   },
   searchIcon: {
-    fontSize: 16,
+    fontSize: 14,
   },
   searchInput: {
     flex: 1,
@@ -551,28 +773,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   authorsList: {
-    maxHeight: 170,
+    maxHeight: 150,
     borderWidth: 1.5,
     borderRadius: 2,
   },
   authorsScroll: {
-    maxHeight: 166,
+    maxHeight: 146,
   },
   authorItem: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 12,
-    paddingVertical: 9,
+    paddingVertical: 8,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   authorItemText: {
-    fontSize: 13,
-  },
-  emptyAuthors: {
     fontSize: 12,
-    textAlign: 'center',
-    padding: 14,
   },
   footer: {
     paddingHorizontal: 14,

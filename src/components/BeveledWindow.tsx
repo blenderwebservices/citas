@@ -13,11 +13,14 @@ import {
 import { AppTheme } from '../theme/themes';
 import { Quote } from '../types/quote';
 import { clampValue, computeSafeDragBounds } from '../utils/quoteFilter';
+import { QuoteApiSource } from '../types/quote';
 
 interface BeveledWindowProps {
   quote: Quote | null;
   theme: AppTheme;
   hasActiveFilters: boolean;
+  apiSource?: QuoteApiSource;
+  isLoadingQuote?: boolean;
   onNextQuote: () => void;
   onOpenSettings: () => void;
   onClose: () => void;
@@ -77,6 +80,8 @@ export const BeveledWindow: React.FC<BeveledWindowProps> = ({
   quote,
   theme,
   hasActiveFilters,
+  apiSource,
+  isLoadingQuote,
   onNextQuote,
   onOpenSettings,
   onClose,
@@ -264,6 +269,22 @@ export const BeveledWindow: React.FC<BeveledWindowProps> = ({
           <Text style={[styles.titleBarText, { color: theme.textSecondary }]}>
             Citas Célebres
           </Text>
+          {apiSource && apiSource !== 'local' && (
+            <Text
+              style={{
+                fontSize: 9,
+                fontWeight: '700',
+                color: theme.accent,
+                backgroundColor: theme.accent + '22',
+                paddingHorizontal: 4,
+                paddingVertical: 1,
+                borderRadius: 2,
+                overflow: 'hidden',
+              }}
+            >
+              {apiSource === 'github-cdn' ? 'CDN' : 'API'}
+            </Text>
+          )}
         </View>
 
         <View style={styles.controlsRow}>
@@ -271,7 +292,7 @@ export const BeveledWindow: React.FC<BeveledWindowProps> = ({
             onPress={onNextQuote}
             accessibilityLabel="Siguiente cita"
             theme={theme}
-            symbol="↻"
+            symbol={isLoadingQuote ? '⏳' : '↻'}
           />
           <BevelButton
             onPress={onOpenSettings}
