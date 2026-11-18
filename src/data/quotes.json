@@ -1,0 +1,185 @@
+[
+  {
+    "id": "q-001",
+    "text": "Solo sé que no sé nada.",
+    "author": "Sócrates",
+    "year": "Siglo V a.C.",
+    "country": "Grecia",
+    "tags": ["filosofía", "sabiduría"]
+  },
+  {
+    "id": "q-002",
+    "text": "La imaginación es más importante que el conocimiento. El conocimiento es limitado, mientras que la imaginación abarca el mundo entero.",
+    "author": "Albert Einstein",
+    "year": 1929,
+    "country": "Alemania",
+    "tags": ["ciencia", "creatividad"]
+  },
+  {
+    "id": "q-003",
+    "text": "No hay nada en el mundo que deba ser temido, solo comprendido. Ahora es el momento de comprender más, para que podamos temer menos.",
+    "author": "Marie Curie",
+    "year": 1911,
+    "country": "Polonia",
+    "tags": ["ciencia", "sabiduría"]
+  },
+  {
+    "id": "q-004",
+    "text": "El arte es la mentira que nos permite comprender la verdad.",
+    "author": "Pablo Picasso",
+    "year": 1923,
+    "country": "España",
+    "tags": ["arte", "filosofía"]
+  },
+  {
+    "id": "q-005",
+    "text": "Pienso, luego existo.",
+    "author": "René Descartes",
+    "year": 1637,
+    "country": "Francia",
+    "tags": ["filosofía"]
+  },
+  {
+    "id": "q-006",
+    "text": "El éxito no es definitivo, el fracaso no es fatal: lo que cuenta es el valor para continuar.",
+    "author": "Winston Churchill",
+    "country": "Reino Unido",
+    "tags": ["motivación", "historia"]
+  },
+  {
+    "id": "q-007",
+    "text": "Pies, para qué los quiero si tengo alas pa' volar.",
+    "author": "Frida Kahlo",
+    "year": 1953,
+    "country": "México",
+    "tags": ["arte", "motivación"]
+  },
+  {
+    "id": "q-008",
+    "text": "La vida es muy simple, pero insistimos en hacerla complicada.",
+    "author": "Confucio",
+    "year": "Siglo V a.C.",
+    "country": "China",
+    "tags": ["filosofía", "sabiduría"]
+  },
+  {
+    "id": "q-009",
+    "text": "En algún lugar, algo increíble está esperando ser descubierto.",
+    "author": "Carl Sagan",
+    "year": 1980,
+    "country": "Estados Unidos",
+    "tags": ["ciencia", "motivación"]
+  },
+  {
+    "id": "q-010",
+    "text": "Uno no es lo que es por lo que escribe, sino por lo que ha leído.",
+    "author": "Jorge Luis Borges",
+    "year": 1979,
+    "country": "Argentina",
+    "tags": ["literatura", "sabiduría"]
+  },
+  {
+    "id": "q-011",
+    "text": "La música expresa lo que no puede ser dicho y aquello sobre lo que es imposible permanecer en silencio.",
+    "author": "Victor Hugo",
+    "year": 1864,
+    "country": "Francia",
+    "tags": ["arte", "literatura"]
+  },
+  {
+    "id": "q-012",
+    "text": "La verdadera sabiduría está en reconocer la propia ignorancia.",
+    "author": "Sócrates",
+    "year": "Siglo V a.C.",
+    "country": "Grecia",
+    "tags": ["filosofía", "sabiduría"]
+  },
+  {
+    "id": "q-013",
+    "text": "Aquel que tiene un porqué para vivir se puede enfrentar a todos los cómos.",
+    "author": "Friedrich Nietzsche",
+    "year": 1889,
+    "country": "Alemania",
+    "tags": ["filosofía", "motivación"]
+  },
+  {
+    "id": "q-014",
+    "text": "La simplicidad es la máxima sofisticación.",
+    "author": "Leonardo da Vinci",
+    "country": "Italia",
+    "tags": ["arte", "ciencia"]
+  },
+  {
+    "id": "q-015",
+    "text": "Caminante, no hay camino, se hace camino al andar.",
+    "author": "Antonio Machado",
+    "year": 1912,
+    "country": "España",
+    "tags": ["literatura", "motivación"]
+  },
+  {
+    "id": "q-016",
+    "text": "La medida de la inteligencia es la capacidad de cambiar.",
+    "author": "Albert Einstein",
+    "country": "Alemania",
+    "tags": ["ciencia", "sabiduría"]
+  },
+  {
+    "id": "q-017",
+    "text": "La libertad nunca es dada voluntariamente por el opresor; debe ser exigida por el oprimido.",
+    "author": "Martin Luther King Jr.",
+    "year": 1963,
+    "country": "Estados Unidos",
+    "tags": ["historia", "motivación"]
+  },
+  {
+    "id": "q-018",
+    "text": "Quien controla el pasado controla el futuro. Quien controla el presente controla el pasado.",
+    "author": "George Orwell",
+    "year": 1949,
+    "country": "Reino Unido",
+    "tags": ["literatura", "historia"]
+  },
+  {
+    "id": "q-019",
+    "text": "No podemos resolver problemas pensando de la misma manera que cuando los creamos.",
+    "author": "Albert Einstein",
+    "tags": ["ciencia", "filosofía"]
+  },
+  {
+    "id": "q-020",
+    "text": "El secreto de la existencia humana no solo está en vivir, sino también en saber para qué se vive.",
+    "author": "Fiódor Dostoyevski",
+    "year": 1880,
+    "country": "Rusia",
+    "tags": ["literatura", "filosofía"]
+  },
+  {
+    "id": "q-021",
+    "text": "Cada niño es un artista. El problema es cómo seguir siendo artista una vez que crezcamos.",
+    "author": "Pablo Picasso",
+    "country": "España",
+    "tags": ["arte", "creatividad"]
+  },
+  {
+    "id": "q-022",
+    "text": "La historia es la versión de los acontecimientos pasados en la que la gente ha decidido ponerse de acuerdo.",
+    "author": "Napoleón Bonaparte",
+    "country": "Francia",
+    "tags": ["historia"]
+  },
+  {
+    "id": "q-023",
+    "text": "La tecnología es mejor cuando reúne a las personas.",
+    "author": "Matt Mullenweg",
+    "tags": ["tecnología"]
+  },
+  {
+    "id": "q-024",
+    "text": "Cualquier tecnología suficientemente avanzada es indistinguible de la magia.",
+    "author": "Arthur C. Clarke",
+    "year": 1962,
+    "country": "Reino Unido",
+    "tags": ["tecnología", "ciencia"]
+  }
+]
