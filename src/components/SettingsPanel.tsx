@@ -1,6 +1,5 @@
 import React, { useMemo, useState } from 'react';
 import {
-  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -75,13 +74,12 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
     setTimeout(() => setSyncFeedback(null), 3500);
   };
 
+  if (!visible) {
+    return null;
+  }
+
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="fade"
-      onRequestClose={onClose}
-    >
+    <View style={styles.overlayWrapper}>
       <Pressable
         style={styles.overlay}
         onPress={onClose}
@@ -563,11 +561,15 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
           </View>
         </Pressable>
       </Pressable>
-    </Modal>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
+  overlayWrapper: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 99999,
+  },
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.45)',
