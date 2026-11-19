@@ -205,12 +205,13 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
 
   return (
     <View style={styles.overlayWrapper}>
-      <Pressable
-        style={styles.overlay}
-        onPress={onClose}
-        accessibilityLabel="Cerrar ajustes tocando el fondo"
-      >
+      <View style={styles.overlay}>
         <Pressable
+          style={StyleSheet.absoluteFill}
+          onPress={onClose}
+          accessibilityLabel="Cerrar ajustes tocando el fondo"
+        />
+        <View
           style={[
             styles.panelOuter,
             {
@@ -222,7 +223,6 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
               shadowColor: theme.shadowColor,
             },
           ]}
-          onPress={(e) => e.stopPropagation()}
         >
           {/* Header */}
           <View
@@ -988,8 +988,8 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
                 : 'Ninguna cita coincide con los filtros'}
             </Text>
           </View>
-        </Pressable>
-      </Pressable>
+        </View>
+      </View>
     </View>
   );
 };
