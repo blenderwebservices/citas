@@ -7,14 +7,15 @@ import {
   fetchPositiveQuote,
   fetchZenQuote,
 } from '../services/quotesApi';
-import { Quote, QuoteApiSource, ThemeMode } from '../types/quote';
+import { Quote, QuoteApiSource, ThemePreference } from '../types/quote';
 import { filterQuotes, normalizeText, pickNextQuote } from '../utils/quoteFilter';
 
 const ALL_LOCAL_QUOTES: Quote[] = quotesData as Quote[];
 
 interface QuotesState {
-  theme: ThemeMode;
+  themePreference: ThemePreference;
   apiSource: QuoteApiSource;
+  localQuotes: Quote[];
   selectedCategories: string[];
   selectedAuthor: string | null;
   currentQuoteId: string | null;
@@ -26,8 +27,9 @@ interface QuotesState {
   isSettingsOpen: boolean;
 
   setApiSource: (source: QuoteApiSource) => void;
-  toggleTheme: () => void;
-  setTheme: (theme: ThemeMode) => void;
+  setThemePreference: (preference: ThemePreference) => void;
+  importQuotes: (quotes: Quote[], mode: 'append' | 'replace') => void;
+  resetLocalQuotes: () => void;
   toggleCategory: (category: string) => void;
   setSelectedAuthor: (author: string | null) => void;
   clearFilters: () => void;
@@ -59,8 +61,9 @@ function resolveCurrentAfterFilterChange(
 export const useQuotesStore = create<QuotesState>()(
   persist(
     (set, get) => ({
-      theme: 'light',
+      themePreference: 'system',
       apiSource: 'local',
+      localQuotes: ALL_LOCAL_QUOTES,
       selectedCategories: [],
       selectedAuthor: null,
       currentQuoteId: ALL_LOCAL_QUOTES[0]?.id ?? null,
@@ -80,12 +83,39 @@ export const useQuotesStore = create<QuotesState>()(
         }
       },
 
-      toggleTheme: () =>
-        set((state) => ({
-          theme: state.theme === 'light' ? 'dark' : 'light',
-        })),
+      setThemePreference: (themePreference) => set({ themePreference }),
 
-      setTheme: (theme) => set({ theme }),
+      importQuotes: (incoming, mode) =>
+        set((state) => {
+          const merged =
+            mode === 'replace'
+              ? incoming
+              : [
+                  ...state.localQuotes,
+                  ...incoming.filter(
+                    (q) => !state.localQuotes.some((e) => e.id === q.id)
+                  ),
+                ];
+
+          return {
+            apiSource: 'local',
+            localQuotes: merged,
+            selectedCategories: [],
+            selectedAuthor: null,
+            currentDynamicQuote: null,
+            currentQuoteId: merged[0]?.id ?? null,
+          };
+        }),
+
+      resetLocalQuotes: () =>
+        set({
+          apiSource: 'local',
+          localQuotes: ALL_LOCAL_QUOTES,
+          selectedCategories: [],
+          selectedAuthor: null,
+          currentDynamicQuote: null,
+          currentQuoteId: ALL_LOCAL_QUOTES[0]?.id ?? null,
+        }),
 
       toggleCategory: (category) =>
         set((state) => {
@@ -207,11 +237,11 @@ export const useQuotesStore = create<QuotesState>()(
       setSettingsOpen: (open) => set({ isSettingsOpen: open }),
 
       getActiveCatalog: () => {
-        const { apiSource, remoteQuotes } = get();
+        const { apiSource, remoteQuotes, localQuotes } = get();
         if (apiSource === 'github-cdn' && remoteQuotes.length > 0) {
           return remoteQuotes;
         }
-        return ALL_LOCAL_QUOTES;
+        return localQuotes;
       },
 
       getFilteredQuotes: () => {
@@ -224,7 +254,8 @@ export const useQuotesStore = create<QuotesState>()(
       },
 
       getCurrentQuote: () => {
-        const { currentDynamicQuote, currentQuoteId, apiSource } = get();
+        const { currentDynamicQuote, currentQuoteId, apiSource, localQuotes } =
+          get();
         if (
           (apiSource === 'positive-api' || apiSource === 'zenquotes') &&
           currentDynamicQuote
@@ -243,7 +274,7 @@ export const useQuotesStore = create<QuotesState>()(
         return (
           filtered.find((q) => q.id === currentQuoteId) ??
           filtered[0] ??
-          ALL_LOCAL_QUOTES[0] ??
+          localQuotes[0] ??
           null
         );
       },
@@ -252,8 +283,9 @@ export const useQuotesStore = create<QuotesState>()(
       name: 'citas-celebres-storage',
       storage: createJSONStorage(() => AsyncStorage),
       partialize: (state) => ({
-        theme: state.theme,
+        themePreference: state.themePreference,
         apiSource: state.apiSource,
+        localQuotes: state.localQuotes,
         selectedCategories: state.selectedCategories,
         selectedAuthor: state.selectedAuthor,
         remoteQuotes: state.remoteQuotes,

@@ -1,5 +1,9 @@
 export type ThemeMode = 'light' | 'dark';
 
+export type ThemePreference = ThemeMode | 'system';
+
+export type QuoteFileFormat = 'json' | 'csv';
+
 export type QuoteApiSource = 'local' | 'github-cdn' | 'positive-api' | 'zenquotes';
 
 export interface ApiSourceOption {

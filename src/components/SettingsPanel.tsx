@@ -1,9 +1,10 @@
 import React, { useMemo, useState } from 'react';
 import {
+  ActivityIndicator,
   Pressable,
   ScrollView,
+  Share,
   StyleSheet,
-  Switch,
   Text,
   TextInput,
   View,
@@ -11,12 +12,34 @@ import {
 import { API_SOURCE_OPTIONS } from '../services/quotesApi';
 import { useQuotesStore } from '../store/useQuotesStore';
 import { AppTheme } from '../theme/themes';
-import { QuoteApiSource } from '../types/quote';
+import {
+  QuoteApiSource,
+  QuoteFileFormat,
+  ThemePreference,
+} from '../types/quote';
 import {
   extractAuthors,
   extractCategories,
   normalizeText,
 } from '../utils/quoteFilter';
+import {
+  parseQuotesFromCsv,
+  parseQuotesFromJson,
+  quotesToCsv,
+  quotesToJson,
+} from '../utils/quoteSerializer';
+
+const THEME_OPTIONS: { value: ThemePreference; label: string; icon: string }[] =
+  [
+    { value: 'light', label: 'Claro', icon: '☀' },
+    { value: 'dark', label: 'Oscuro', icon: '☾' },
+    { value: 'system', label: 'Sistema', icon: '◐' },
+  ];
+
+const FORMAT_OPTIONS: { value: QuoteFileFormat; label: string }[] = [
+  { value: 'json', label: 'JSON' },
+  { value: 'csv', label: 'CSV' },
+];
 
 interface SettingsPanelProps {
   visible: boolean;
@@ -30,7 +53,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
   onClose,
 }) => {
   const {
-    theme: themeMode,
+    themePreference,
     apiSource,
     selectedCategories,
     selectedAuthor,
@@ -38,7 +61,9 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
     isSyncingRemote,
     setApiSource,
     syncRemoteQuotes,
-    toggleTheme,
+    setThemePreference,
+    importQuotes,
+    resetLocalQuotes,
     toggleCategory,
     setSelectedAuthor,
     clearFilters,
@@ -48,6 +73,17 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
 
   const [authorQuery, setAuthorQuery] = useState('');
   const [syncFeedback, setSyncFeedback] = useState<string | null>(null);
+  const [transferFormat, setTransferFormat] =
+    useState<QuoteFileFormat>('json');
+  const [importText, setImportText] = useState('');
+  const [importUrl, setImportUrl] = useState('');
+  const [importMode, setImportMode] = useState<'append' | 'replace'>('append');
+  const [exportPreview, setExportPreview] = useState<string | null>(null);
+  const [transferFeedback, setTransferFeedback] = useState<{
+    type: 'ok' | 'error';
+    message: string;
+  } | null>(null);
+  const [isFetchingFileUrl, setIsFetchingFileUrl] = useState(false);
 
   const activeCatalog = getActiveCatalog();
   const categories = useMemo(() => extractCategories(activeCatalog), [activeCatalog]);
@@ -72,6 +108,95 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
       setSyncFeedback('Sin conexión o error al conectar');
     }
     setTimeout(() => setSyncFeedback(null), 3500);
+  };
+
+  const handleExport = async () => {
+    const quotesToExport =
+      matchingCount > 0 ? getFilteredQuotes() : activeCatalog;
+    const serialized =
+      transferFormat === 'json'
+        ? quotesToJson(quotesToExport)
+        : quotesToCsv(quotesToExport);
+
+    setExportPreview(serialized);
+    setTransferFeedback({
+      type: 'ok',
+      message: `${quotesToExport.length} citas preparadas en ${transferFormat.toUpperCase()}.`,
+    });
+
+    try {
+      await Share.share({
+        title: `citas.${transferFormat}`,
+        message: serialized,
+      });
+    } catch {
+      // Share sheet cancelled or unavailable; preview stays visible to copy
+    }
+  };
+
+  const handleImportFromText = (rawContent: string) => {
+    const trimmed = rawContent.trim();
+    if (!trimmed) {
+      setTransferFeedback({
+        type: 'error',
+        message: 'Pega contenido JSON o CSV antes de importar.',
+      });
+      return;
+    }
+
+    try {
+      const parsed =
+        transferFormat === 'json'
+          ? parseQuotesFromJson(trimmed)
+          : parseQuotesFromCsv(trimmed);
+
+      importQuotes(parsed, importMode);
+      setImportText('');
+      setTransferFeedback({
+        type: 'ok',
+        message: `Se cargaron ${parsed.length} citas desde ${transferFormat.toUpperCase()} (${importMode === 'replace' ? 'reemplazo' : 'agregadas'}).`,
+      });
+    } catch (err) {
+      setTransferFeedback({
+        type: 'error',
+        message:
+          err instanceof Error
+            ? err.message
+            : 'No se pudo procesar el archivo.',
+      });
+    }
+  };
+
+  const handleImportFromUrl = async () => {
+    const url = importUrl.trim();
+    if (!url) {
+      setTransferFeedback({
+        type: 'error',
+        message: 'Ingresa una URL válida de JSON o CSV.',
+      });
+      return;
+    }
+
+    setIsFetchingFileUrl(true);
+    setTransferFeedback(null);
+    try {
+      const res = await fetch(url);
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+      }
+      const text = await res.text();
+      handleImportFromText(text);
+    } catch (err) {
+      setTransferFeedback({
+        type: 'error',
+        message:
+          err instanceof Error
+            ? `Error al descargar: ${err.message}`
+            : 'No se pudo descargar el archivo.',
+      });
+    } finally {
+      setIsFetchingFileUrl(false);
+    }
   };
 
   if (!visible) {
@@ -303,14 +428,65 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
               )}
             </View>
 
-            {/* Apariencia */}
+            {/* Apariencia: Claro / Oscuro / Sistema */}
             <View style={styles.section}>
               <Text style={[styles.sectionTitle, { color: theme.textMuted }]}>
-                APARIENCIA
+                TEMA VISUAL
+              </Text>
+              <View style={styles.segmentedRow}>
+                {THEME_OPTIONS.map((opt) => {
+                  const isActive = themePreference === opt.value;
+                  return (
+                    <Pressable
+                      key={opt.value}
+                      onPress={() => setThemePreference(opt.value)}
+                      style={[
+                        styles.segmentedBtn,
+                        {
+                          backgroundColor: isActive
+                            ? theme.accent
+                            : theme.buttonBg,
+                          borderTopColor: isActive
+                            ? theme.accent
+                            : theme.buttonBorderLight,
+                          borderLeftColor: isActive
+                            ? theme.accent
+                            : theme.buttonBorderLight,
+                          borderBottomColor: isActive
+                            ? theme.accent
+                            : theme.buttonBorderDark,
+                          borderRightColor: isActive
+                            ? theme.accent
+                            : theme.buttonBorderDark,
+                        },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.segmentedText,
+                          {
+                            color: isActive
+                              ? theme.accentText
+                              : theme.textPrimary,
+                          },
+                        ]}
+                      >
+                        {opt.icon} {opt.label}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+
+            {/* Descarga y Carga desde JSON / CSV */}
+            <View style={styles.section}>
+              <Text style={[styles.sectionTitle, { color: theme.textMuted }]}>
+                DESCARGA Y CARGA (JSON / CSV)
               </Text>
               <View
                 style={[
-                  styles.settingRow,
+                  styles.cardBox,
                   {
                     backgroundColor: theme.windowInnerBg,
                     borderTopColor: theme.innerBevelShadow,
@@ -320,32 +496,285 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
                   },
                 ]}
               >
-                <View style={styles.settingLabelGroup}>
-                  <Text style={[styles.themeIcon, { color: theme.accent }]}>
-                    {themeMode === 'dark' ? '☾' : '☀'}
-                  </Text>
-                  <View>
-                    <Text
-                      style={[styles.settingLabel, { color: theme.textPrimary }]}
-                    >
-                      Modo Oscuro
-                    </Text>
+                <View style={styles.segmentedRow}>
+                  {FORMAT_OPTIONS.map((opt) => {
+                    const isActive = transferFormat === opt.value;
+                    return (
+                      <Pressable
+                        key={opt.value}
+                        onPress={() => {
+                          setTransferFormat(opt.value);
+                          setExportPreview(null);
+                        }}
+                        style={[
+                          styles.segmentedBtn,
+                          {
+                            backgroundColor: isActive
+                              ? theme.accent
+                              : theme.buttonBg,
+                            borderTopColor: isActive
+                              ? theme.accent
+                              : theme.buttonBorderLight,
+                            borderLeftColor: isActive
+                              ? theme.accent
+                              : theme.buttonBorderLight,
+                            borderBottomColor: isActive
+                              ? theme.accent
+                              : theme.buttonBorderDark,
+                            borderRightColor: isActive
+                              ? theme.accent
+                              : theme.buttonBorderDark,
+                          },
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.segmentedText,
+                            {
+                              color: isActive
+                                ? theme.accentText
+                                : theme.textPrimary,
+                            },
+                          ]}
+                        >
+                          Formato {opt.label}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+
+                <View style={styles.rowActions}>
+                  <Pressable
+                    onPress={() => void handleExport()}
+                    style={[
+                      styles.actionBtn,
+                      {
+                        backgroundColor: theme.buttonBg,
+                        borderTopColor: theme.buttonBorderLight,
+                        borderLeftColor: theme.buttonBorderLight,
+                        borderBottomColor: theme.buttonBorderDark,
+                        borderRightColor: theme.buttonBorderDark,
+                      },
+                    ]}
+                  >
                     <Text
                       style={[
-                        styles.settingSublabel,
-                        { color: theme.textMuted },
+                        styles.actionBtnText,
+                        { color: theme.textPrimary },
                       ]}
                     >
-                      Invierte el marco biselado en tiempo real
+                      ⬇ Descargar / Exportar {transferFormat.toUpperCase()}
                     </Text>
+                  </Pressable>
+                </View>
+
+                {exportPreview !== null && (
+                  <TextInput
+                    value={exportPreview}
+                    editable={false}
+                    multiline
+                    selectTextOnFocus
+                    style={[
+                      styles.multilineInput,
+                      {
+                        backgroundColor: theme.inputBg,
+                        borderColor: theme.inputBorder,
+                        color: theme.textSecondary,
+                      },
+                    ]}
+                  />
+                )}
+
+                <View
+                  style={[
+                    styles.innerDivider,
+                    { backgroundColor: theme.divider },
+                  ]}
+                />
+
+                <View style={styles.rowBetween}>
+                  <Text
+                    style={[styles.fieldLabel, { color: theme.textSecondary }]}
+                  >
+                    Cargar citas ({transferFormat.toUpperCase()})
+                  </Text>
+                  <View style={styles.inlineToggle}>
+                    <Pressable
+                      onPress={() => setImportMode('append')}
+                      style={[
+                        styles.miniBtn,
+                        {
+                          backgroundColor:
+                            importMode === 'append'
+                              ? theme.accent
+                              : theme.buttonBg,
+                        },
+                      ]}
+                    >
+                      <Text
+                        style={{
+                          fontSize: 11,
+                          fontWeight: '600',
+                          color:
+                            importMode === 'append'
+                              ? theme.accentText
+                              : theme.textPrimary,
+                        }}
+                      >
+                        Agregar
+                      </Text>
+                    </Pressable>
+                    <Pressable
+                      onPress={() => setImportMode('replace')}
+                      style={[
+                        styles.miniBtn,
+                        {
+                          backgroundColor:
+                            importMode === 'replace'
+                              ? theme.accent
+                              : theme.buttonBg,
+                        },
+                      ]}
+                    >
+                      <Text
+                        style={{
+                          fontSize: 11,
+                          fontWeight: '600',
+                          color:
+                            importMode === 'replace'
+                              ? theme.accentText
+                              : theme.textPrimary,
+                        }}
+                      >
+                        Reemplazar
+                      </Text>
+                    </Pressable>
                   </View>
                 </View>
-                <Switch
-                  value={themeMode === 'dark'}
-                  onValueChange={toggleTheme}
-                  trackColor={{ false: theme.divider, true: theme.accent }}
-                  thumbColor="#FFFFFF"
+
+                <TextInput
+                  value={importText}
+                  onChangeText={setImportText}
+                  multiline
+                  placeholder={
+                    transferFormat === 'json'
+                      ? '[{"text":"...","author":"...","year":1950,"country":"...","tags":["filosofía"]}]'
+                      : 'id,text,author,year,country,tags\nq-100,"Cita de ejemplo","Autor",2024,México,filosofía|arte'
+                  }
+                  placeholderTextColor={theme.textMuted}
+                  style={[
+                    styles.multilineInput,
+                    {
+                      backgroundColor: theme.inputBg,
+                      borderColor: theme.inputBorder,
+                      color: theme.textPrimary,
+                    },
+                  ]}
                 />
+
+                <View style={styles.urlImportRow}>
+                  <TextInput
+                    value={importUrl}
+                    onChangeText={setImportUrl}
+                    placeholder={`O cargar desde URL (.${transferFormat})...`}
+                    placeholderTextColor={theme.textMuted}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    style={[
+                      styles.textInput,
+                      styles.flexInput,
+                      {
+                        backgroundColor: theme.inputBg,
+                        borderColor: theme.inputBorder,
+                        color: theme.textPrimary,
+                      },
+                    ]}
+                  />
+                  <Pressable
+                    onPress={() => void handleImportFromUrl()}
+                    disabled={isFetchingFileUrl}
+                    style={[
+                      styles.actionBtn,
+                      {
+                        backgroundColor: theme.buttonBg,
+                        borderTopColor: theme.buttonBorderLight,
+                        borderLeftColor: theme.buttonBorderLight,
+                        borderBottomColor: theme.buttonBorderDark,
+                        borderRightColor: theme.buttonBorderDark,
+                      },
+                    ]}
+                  >
+                    {isFetchingFileUrl ? (
+                      <ActivityIndicator size="small" color={theme.accent} />
+                    ) : (
+                      <Text
+                        style={[
+                          styles.actionBtnText,
+                          { color: theme.textPrimary },
+                        ]}
+                      >
+                        URL
+                      </Text>
+                    )}
+                  </Pressable>
+                </View>
+
+                <View style={styles.rowActions}>
+                  <Pressable
+                    onPress={() => handleImportFromText(importText)}
+                    style={[
+                      styles.actionBtn,
+                      {
+                        backgroundColor: theme.buttonBg,
+                        borderTopColor: theme.buttonBorderLight,
+                        borderLeftColor: theme.buttonBorderLight,
+                        borderBottomColor: theme.buttonBorderDark,
+                        borderRightColor: theme.buttonBorderDark,
+                      },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.actionBtnText,
+                        { color: theme.textPrimary },
+                      ]}
+                    >
+                      ⬆ Cargar {transferFormat.toUpperCase()}
+                    </Text>
+                  </Pressable>
+
+                  <Pressable
+                    onPress={() => {
+                      resetLocalQuotes();
+                      setTransferFeedback({
+                        type: 'ok',
+                        message: 'Catálogo local restaurado.',
+                      });
+                    }}
+                    style={styles.linkBtn}
+                  >
+                    <Text style={[styles.clearText, { color: theme.accent }]}>
+                      Restaurar base
+                    </Text>
+                  </Pressable>
+                </View>
+
+                {transferFeedback && (
+                  <Text
+                    style={[
+                      styles.feedbackText,
+                      {
+                        color:
+                          transferFeedback.type === 'error'
+                            ? theme.danger
+                            : theme.accent,
+                      },
+                    ]}
+                  >
+                    {transferFeedback.message}
+                  </Text>
+                )}
               </View>
             </View>
 
@@ -802,5 +1231,101 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     fontSize: 12,
     textAlign: 'center',
+  },
+  segmentedRow: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  segmentedBtn: {
+    flex: 1,
+    paddingVertical: 8,
+    paddingHorizontal: 8,
+    borderWidth: 1.5,
+    borderRadius: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  segmentedText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  cardBox: {
+    padding: 12,
+    borderWidth: 1.5,
+    borderRadius: 2,
+    gap: 10,
+  },
+  fieldLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  textInput: {
+    borderWidth: 1,
+    borderRadius: 2,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    fontSize: 12,
+  },
+  flexInput: {
+    flex: 1,
+  },
+  multilineInput: {
+    borderWidth: 1,
+    borderRadius: 2,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    fontSize: 11,
+    minHeight: 68,
+    maxHeight: 110,
+    textAlignVertical: 'top',
+  },
+  rowActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flexWrap: 'wrap',
+  },
+  rowBetween: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  inlineToggle: {
+    flexDirection: 'row',
+    gap: 4,
+  },
+  miniBtn: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 2,
+  },
+  urlImportRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  actionBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderWidth: 1.5,
+    borderRadius: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  actionBtnText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  linkBtn: {
+    paddingVertical: 4,
+    paddingHorizontal: 4,
+  },
+  feedbackText: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  innerDivider: {
+    height: 1,
+    marginVertical: 2,
   },
 });
