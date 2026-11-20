@@ -2,21 +2,70 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-SOURCE_IMAGE="$ROOT_DIR/docs/icono-app-citas.jpeg"
-
-if [ ! -f "$SOURCE_IMAGE" ]; then
-  echo "❌ No se encontró $SOURCE_IMAGE"
-  exit 1
-fi
+PNG_IMAGE="$ROOT_DIR/docs/icono-app-citas.png"
+JPEG_IMAGE="$ROOT_DIR/docs/icono-app-citas.jpeg"
 
 TEMP_DIR="$(mktemp -d)"
 trap 'rm -rf "$TEMP_DIR"' EXIT
 
 echo "▶ Recortando y normalizando imagen fuente..."
-# Recortar centrado a proporción 1:1 (cuadrado)
-sips -s format png --cropToHeightWidth 1536 1536 "$SOURCE_IMAGE" --out "$TEMP_DIR/base_1536.png" > /dev/null
-# Generar master de 1024x1024
-sips -z 1024 1024 "$TEMP_DIR/base_1536.png" --out "$TEMP_DIR/master_1024.png" > /dev/null
+if [ -f "$PNG_IMAGE" ]; then
+  echo "  Usando $PNG_IMAGE como fuente principal..."
+  swift - "$PNG_IMAGE" "$TEMP_DIR/master_1024.png" << 'SWIFT_EOF'
+import AppKit
+
+let args = CommandLine.arguments
+guard args.count >= 3 else { exit(1) }
+let inputPath = args[1]
+let outputPath = args[2]
+
+let url = URL(fileURLWithPath: inputPath)
+guard let data = try? Data(contentsOf: url),
+      let rep = NSBitmapImageRep(data: data),
+      let cgImage = rep.cgImage else {
+    print("Error al cargar la imagen PNG")
+    exit(1)
+}
+
+// Bounding box del icono dentro de icono-app-citas.png: x=219, y=384, w=356, h=356
+let cropRect = CGRect(x: 219, y: 384, width: 356, height: 356)
+guard let cropped = cgImage.cropping(to: cropRect) else {
+    print("Error al recortar el icono")
+    exit(1)
+}
+
+let targetRep = NSBitmapImageRep(
+    bitmapDataPlanes: nil,
+    pixelsWide: 1024,
+    pixelsHigh: 1024,
+    bitsPerSample: 8,
+    samplesPerPixel: 4,
+    hasAlpha: true,
+    isPlanar: false,
+    colorSpaceName: .deviceRGB,
+    bytesPerRow: 0,
+    bitsPerPixel: 0
+)!
+
+NSGraphicsContext.saveGraphicsState()
+let ctx = NSGraphicsContext(bitmapImageRep: targetRep)
+NSGraphicsContext.current = ctx
+ctx?.cgContext.interpolationQuality = .high
+ctx?.cgContext.draw(cropped, in: CGRect(x: 0, y: 0, width: 1024, height: 1024))
+NSGraphicsContext.restoreGraphicsState()
+
+if let pngData = targetRep.representation(using: .png, properties: [:]) {
+    try? pngData.write(to: URL(fileURLWithPath: outputPath))
+}
+SWIFT_EOF
+elif [ -f "$JPEG_IMAGE" ]; then
+  echo "  Usando $JPEG_IMAGE como fuente de respaldo..."
+  sips -s format png --cropToHeightWidth 1536 1536 "$JPEG_IMAGE" --out "$TEMP_DIR/base_1536.png" > /dev/null
+  sips -z 1024 1024 "$TEMP_DIR/base_1536.png" --out "$TEMP_DIR/master_1024.png" > /dev/null
+else
+  echo "❌ No se encontró icono-app-citas.png ni icono-app-citas.jpeg en docs/"
+  exit 1
+fi
 
 echo "▶ Generando iconos para macOS (AppIcon.appiconset)..."
 MACOS_ICONSET_DIR="$ROOT_DIR/macos/Citas-macOS/Assets.xcassets/AppIcon.appiconset"
