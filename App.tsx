@@ -1,14 +1,16 @@
 import React from 'react';
-import { StatusBar, StyleSheet, View } from 'react-native';
+import { StatusBar, StyleSheet, useColorScheme, View } from 'react-native';
 import { BeveledWindow } from './src/components/BeveledWindow';
 import { RestoreWindowButton } from './src/components/RestoreWindowButton';
 import { useQuotesStore } from './src/store/useQuotesStore';
 import { themes } from './src/theme/themes';
 import { closeApp } from './src/utils/windowControl';
+import type { ThemeMode } from './src/types/quote';
 
 export default function App() {
+  const systemScheme = useColorScheme();
   const {
-    theme: themeMode,
+    themePreference,
     apiSource,
     isLoadingQuote,
     selectedCategories,
@@ -22,7 +24,14 @@ export default function App() {
     getCurrentQuote,
   } = useQuotesStore();
 
-  const activeTheme = themes[themeMode];
+  const resolvedMode: ThemeMode =
+    themePreference === 'system'
+      ? systemScheme === 'dark'
+        ? 'dark'
+        : 'light'
+      : themePreference;
+
+  const activeTheme = themes[resolvedMode];
   const currentQuote = getCurrentQuote();
   const hasActiveFilters =
     selectedCategories.length > 0 || selectedAuthor !== null;
@@ -35,7 +44,7 @@ export default function App() {
   return (
     <View style={styles.backdrop} pointerEvents="box-none">
       <StatusBar
-        barStyle={themeMode === 'dark' ? 'light-content' : 'dark-content'}
+        barStyle={resolvedMode === 'dark' ? 'light-content' : 'dark-content'}
       />
 
       {!isWindowVisible && (
