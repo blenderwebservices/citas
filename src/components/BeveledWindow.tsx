@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
+  Clipboard,
   LayoutChangeEvent,
   PanResponder,
   Platform,
@@ -14,6 +15,7 @@ import { AppTheme } from '../theme/themes';
 import { Quote } from '../types/quote';
 import { clampValue, computeSafeDragBounds } from '../utils/quoteFilter';
 import { QuoteApiSource } from '../types/quote';
+import { SettingsContent } from './SettingsPanel';
 
 interface BeveledWindowProps {
   quote: Quote | null;
@@ -21,8 +23,10 @@ interface BeveledWindowProps {
   hasActiveFilters: boolean;
   apiSource?: QuoteApiSource;
   isLoadingQuote?: boolean;
+  isSettingsOpen?: boolean;
   onNextQuote: () => void;
   onOpenSettings: () => void;
+  onCloseSettings?: () => void;
   onClose: () => void;
   onClearFilters: () => void;
 }
@@ -82,8 +86,10 @@ export const BeveledWindow: React.FC<BeveledWindowProps> = ({
   hasActiveFilters,
   apiSource,
   isLoadingQuote,
+  isSettingsOpen = false,
   onNextQuote,
   onOpenSettings,
+  onCloseSettings,
   onClose,
   onClearFilters,
 }) => {
@@ -153,6 +159,8 @@ export const BeveledWindow: React.FC<BeveledWindowProps> = ({
       onStartShouldSetPanResponder: () => false,
       onMoveShouldSetPanResponder: (_, gestureState) =>
         Math.abs(gestureState.dx) > 5 || Math.abs(gestureState.dy) > 5,
+      onPanResponderTerminationRequest: () => true,
+      onShouldBlockNativeResponder: () => false,
       onPanResponderGrant: () => {
         dragStartRef.current = { ...currentPosRef.current };
       },
@@ -219,6 +227,48 @@ export const BeveledWindow: React.FC<BeveledWindowProps> = ({
     }
   };
 
+  const [copiedState, setCopiedState] = useState<'quote' | 'meta' | 'all' | null>(null);
+
+  const handleCopyQuote = () => {
+    if (!quote) return;
+    Clipboard.setString(quote.text);
+    setCopiedState('quote');
+    setTimeout(() => setCopiedState(null), 2000);
+  };
+
+  const handleCopyMeta = () => {
+    if (!quote) return;
+    const parts = [
+      `— ${quote.author}`,
+      hasCountry || hasYear
+        ? `(${[quote.country, quote.year].filter(Boolean).join(', ')})`
+        : '',
+      quote.tags.length > 0 ? quote.tags.map((t) => `#${t}`).join(' ') : '',
+    ]
+      .filter(Boolean)
+      .join(' ');
+    Clipboard.setString(parts);
+    setCopiedState('meta');
+    setTimeout(() => setCopiedState(null), 2000);
+  };
+
+  const handleCopyAll = () => {
+    if (!quote) return;
+    const metaParts = [
+      `— ${quote.author}`,
+      hasCountry || hasYear
+        ? `(${[quote.country, quote.year].filter(Boolean).join(', ')})`
+        : '',
+      quote.tags.length > 0 ? quote.tags.map((t) => `#${t}`).join(' ') : '',
+    ]
+      .filter(Boolean)
+      .join(' ');
+    const fullText = `“${quote.text}”\n\n${metaParts}`;
+    Clipboard.setString(fullText);
+    setCopiedState('all');
+    setTimeout(() => setCopiedState(null), 2000);
+  };
+
   const hasYear =
     quote !== null &&
     quote.year !== undefined &&
@@ -259,9 +309,9 @@ export const BeveledWindow: React.FC<BeveledWindowProps> = ({
         <View style={styles.dragHandleArea}>
           <Text style={[styles.dragGrip, { color: theme.textMuted }]}>⋮⋮</Text>
           <Text style={[styles.titleBarText, { color: theme.textSecondary }]}>
-            Citas Célebres
+            {isSettingsOpen ? '⚙ Ajustes y Fuente' : 'Citas Célebres'}
           </Text>
-          {apiSource && apiSource !== 'local' && (
+          {!isSettingsOpen && apiSource && apiSource !== 'local' && (
             <Text
               style={{
                 fontSize: 9,
@@ -280,18 +330,38 @@ export const BeveledWindow: React.FC<BeveledWindowProps> = ({
         </View>
 
         <View style={styles.controlsRow}>
-          <BevelButton
-            onPress={onNextQuote}
-            accessibilityLabel="Siguiente cita"
-            theme={theme}
-            symbol={isLoadingQuote ? '⏳' : '↻'}
-          />
-          <BevelButton
-            onPress={onOpenSettings}
-            accessibilityLabel="Abrir ajustes"
-            theme={theme}
-            symbol="⚙"
-          />
+          {isSettingsOpen ? (
+            <BevelButton
+              onPress={onCloseSettings ?? onOpenSettings}
+              accessibilityLabel="Volver a las citas"
+              theme={theme}
+              symbol="← Volver"
+            />
+          ) : (
+            <>
+              {quote && (
+                <BevelButton
+                  onPress={handleCopyAll}
+                  accessibilityLabel="Copiar cita completa al portapapeles"
+                  theme={theme}
+                  symbol={copiedState === 'all' ? '✓' : '📋'}
+                  symbolColor={copiedState === 'all' ? theme.accent : undefined}
+                />
+              )}
+              <BevelButton
+                onPress={onNextQuote}
+                accessibilityLabel="Siguiente cita"
+                theme={theme}
+                symbol={isLoadingQuote ? '⏳' : '↻'}
+              />
+              <BevelButton
+                onPress={onOpenSettings}
+                accessibilityLabel="Abrir ajustes"
+                theme={theme}
+                symbol="⚙"
+              />
+            </>
+          )}
           <BevelButton
             onPress={onClose}
             accessibilityLabel="Cerrar ventana"
@@ -306,6 +376,7 @@ export const BeveledWindow: React.FC<BeveledWindowProps> = ({
       <View
         style={[
           styles.innerFrame,
+          isSettingsOpen && { height: 430, padding: 0 },
           {
             backgroundColor: theme.windowInnerBg,
             borderTopColor: theme.innerBevelShadow,
@@ -315,45 +386,114 @@ export const BeveledWindow: React.FC<BeveledWindowProps> = ({
           },
         ]}
       >
-        {quote ? (
+        {isSettingsOpen ? (
+          <SettingsContent theme={theme} onClose={onCloseSettings} />
+        ) : quote ? (
           <View style={styles.quoteContent}>
-            <Text style={[styles.quoteText, { color: theme.textPrimary }]}>
-              “{quote.text}”
-            </Text>
+            <View style={styles.quoteRow}>
+              <Text
+                selectable={true}
+                style={[styles.quoteText, { color: theme.textPrimary }]}
+              >
+                “{quote.text}”
+              </Text>
+              <Pressable
+                onPress={handleCopyQuote}
+                accessibilityRole="button"
+                accessibilityLabel="Copiar texto de la cita"
+                style={[
+                  styles.miniCopyBtn,
+                  {
+                    backgroundColor: theme.buttonBg,
+                    borderTopColor: theme.buttonBorderLight,
+                    borderLeftColor: theme.buttonBorderLight,
+                    borderBottomColor: theme.buttonBorderDark,
+                    borderRightColor: theme.buttonBorderDark,
+                  },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.miniCopyBtnText,
+                    {
+                      color:
+                        copiedState === 'quote' ? theme.accent : theme.textMuted,
+                    },
+                  ]}
+                >
+                  {copiedState === 'quote' ? '✓' : '⧉'}
+                </Text>
+              </Pressable>
+            </View>
 
             <View
               style={[styles.divider, { backgroundColor: theme.divider }]}
             />
 
-            <View style={styles.metaBlock}>
-              <Text style={[styles.authorText, { color: theme.accent }]}>
-                — {quote.author}
-              </Text>
+            <View style={styles.metaRow}>
+              <View style={styles.metaBlock}>
+                <Text
+                  selectable={true}
+                  style={[styles.authorText, { color: theme.accent }]}
+                >
+                  — {quote.author}
+                </Text>
 
-              {(hasYear || hasCountry) && (
-                <View style={styles.historicalRow}>
-                  {hasCountry && (
-                    <Text
-                      style={[
-                        styles.historicalText,
-                        { color: theme.textMuted },
-                      ]}
-                    >
-                      ⌖ {quote.country}
-                    </Text>
-                  )}
-                  {hasYear && (
-                    <Text
-                      style={[
-                        styles.historicalText,
-                        { color: theme.textMuted },
-                      ]}
-                    >
-                      ◷ {String(quote.year)}
-                    </Text>
-                  )}
-                </View>
-              )}
+                {(hasYear || hasCountry) && (
+                  <View style={styles.historicalRow}>
+                    {hasCountry && (
+                      <Text
+                        selectable={true}
+                        style={[
+                          styles.historicalText,
+                          { color: theme.textMuted },
+                        ]}
+                      >
+                        ⌖ {quote.country}
+                      </Text>
+                    )}
+                    {hasYear && (
+                      <Text
+                        selectable={true}
+                        style={[
+                          styles.historicalText,
+                          { color: theme.textMuted },
+                        ]}
+                      >
+                        ◷ {String(quote.year)}
+                      </Text>
+                    )}
+                  </View>
+                )}
+              </View>
+
+              <Pressable
+                onPress={handleCopyMeta}
+                accessibilityRole="button"
+                accessibilityLabel="Copiar autor y detalles"
+                style={[
+                  styles.miniCopyBtn,
+                  {
+                    backgroundColor: theme.buttonBg,
+                    borderTopColor: theme.buttonBorderLight,
+                    borderLeftColor: theme.buttonBorderLight,
+                    borderBottomColor: theme.buttonBorderDark,
+                    borderRightColor: theme.buttonBorderDark,
+                  },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.miniCopyBtnText,
+                    {
+                      color:
+                        copiedState === 'meta' ? theme.accent : theme.textMuted,
+                    },
+                  ]}
+                >
+                  {copiedState === 'meta' ? '✓' : '⧉'}
+                </Text>
+              </Pressable>
             </View>
 
             <View style={styles.tagsRow}>
@@ -362,7 +502,9 @@ export const BeveledWindow: React.FC<BeveledWindowProps> = ({
                   key={tag}
                   style={[styles.tagPill, { backgroundColor: theme.tagBg }]}
                 >
-                  <Text style={[styles.tagText, { color: theme.tagText }]}>
+                  <Text
+                    selectable={true}
+                    style={[styles.tagText, { color: theme.tagText }]}>
                     #{tag}
                   </Text>
                 </View>
@@ -469,7 +611,14 @@ const styles = StyleSheet.create({
   quoteContent: {
     gap: 14,
   },
+  quoteRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
   quoteText: {
+    flex: 1,
     fontFamily: SERIF_FONT,
     fontStyle: 'italic',
     fontSize: 20,
@@ -479,8 +628,30 @@ const styles = StyleSheet.create({
     height: 1,
     width: 48,
   },
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
   metaBlock: {
+    flex: 1,
     gap: 6,
+  },
+  miniCopyBtn: {
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderWidth: 1.5,
+    borderRadius: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 26,
+    height: 26,
+    marginTop: 2,
+  },
+  miniCopyBtnText: {
+    fontSize: 12,
+    fontWeight: '600',
   },
   authorText: {
     fontFamily: SERIF_FONT,

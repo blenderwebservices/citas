@@ -29,7 +29,9 @@ if [ ! -d "$APP_PATH" ]; then
 fi
 
 STAGE_DIR="dist/dmg_stage"
-DMG_PATH="dist/Citas-1.0.0.dmg"
+TIMESTAMP="$(date +"%Y.%m.%d.%H%M")"
+DMG_NAME="Citas-1.0.${TIMESTAMP}.dmg"
+DMG_PATH="dist/${DMG_NAME}"
 
 rm -rf "$STAGE_DIR" "$DMG_PATH"
 mkdir -p "$STAGE_DIR"

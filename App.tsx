@@ -2,9 +2,9 @@ import React from 'react';
 import { StatusBar, StyleSheet, View } from 'react-native';
 import { BeveledWindow } from './src/components/BeveledWindow';
 import { RestoreWindowButton } from './src/components/RestoreWindowButton';
-import { SettingsPanel } from './src/components/SettingsPanel';
 import { useQuotesStore } from './src/store/useQuotesStore';
 import { themes } from './src/theme/themes';
+import { closeApp } from './src/utils/windowControl';
 
 export default function App() {
   const {
@@ -26,6 +26,11 @@ export default function App() {
   const currentQuote = getCurrentQuote();
   const hasActiveFilters =
     selectedCategories.length > 0 || selectedAuthor !== null;
+
+  const handleCloseApp = () => {
+    closeApp();
+    setWindowVisible(false);
+  };
 
   return (
     <View style={styles.backdrop} pointerEvents="box-none">
@@ -49,18 +54,14 @@ export default function App() {
           hasActiveFilters={hasActiveFilters}
           apiSource={apiSource}
           isLoadingQuote={isLoadingQuote}
+          isSettingsOpen={isSettingsOpen}
           onNextQuote={nextQuote}
           onOpenSettings={() => setSettingsOpen(true)}
-          onClose={() => setWindowVisible(false)}
+          onCloseSettings={() => setSettingsOpen(false)}
+          onClose={handleCloseApp}
           onClearFilters={clearFilters}
         />
       )}
-
-      <SettingsPanel
-        visible={isSettingsOpen}
-        theme={activeTheme}
-        onClose={() => setSettingsOpen(false)}
-      />
     </View>
   );
 }

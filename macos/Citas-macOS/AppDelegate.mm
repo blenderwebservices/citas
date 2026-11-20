@@ -1,5 +1,6 @@
 #import "AppDelegate.h"
 
+#import <React/RCTBridgeModule.h>
 #import <React/RCTBundleURLProvider.h>
 #import <ReactAppDependencyProvider/RCTAppDependencyProvider.h>
 
@@ -74,6 +75,27 @@
 #else
   return false;
 #endif
+}
+
+@end
+
+@interface NativeWindowControl : NSObject <RCTBridgeModule>
+@end
+
+@implementation NativeWindowControl
+
+RCT_EXPORT_MODULE(NativeWindowControl);
+
++ (BOOL)requiresMainQueueSetup
+{
+  return YES;
+}
+
+RCT_EXPORT_METHOD(closeApp)
+{
+  dispatch_async(dispatch_get_main_queue(), ^{
+    [NSApp terminate:nil];
+  });
 }
 
 @end
