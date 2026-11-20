@@ -39,6 +39,14 @@ mkdir -p "$STAGE_DIR"
 cp -R "$APP_PATH" "$STAGE_DIR/Citas.app"
 ln -s /Applications "$STAGE_DIR/Applications"
 
+# Configurar icono del volumen del DMG si existe AppIcon.icns
+if [ -f "macos/Citas-macOS/AppIcon.icns" ]; then
+  cp "macos/Citas-macOS/AppIcon.icns" "$STAGE_DIR/.VolumeIcon.icns"
+  if command -v SetFile &>/dev/null; then
+    SetFile -a C "$STAGE_DIR" || true
+  fi
+fi
+
 echo "▶ Creando $DMG_PATH con hdiutil..."
 hdiutil create \
   -volname "Citas" \
