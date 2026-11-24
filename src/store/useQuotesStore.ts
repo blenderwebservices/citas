@@ -25,6 +25,9 @@ interface QuotesState {
   isSyncingRemote: boolean;
   isWindowVisible: boolean;
   isSettingsOpen: boolean;
+  isAlwaysOnTop: boolean;
+  isTimerActive: boolean;
+  timerIntervalMinutes: number;
 
   setApiSource: (source: QuoteApiSource) => void;
   setThemePreference: (preference: ThemePreference) => void;
@@ -37,6 +40,11 @@ interface QuotesState {
   syncRemoteQuotes: () => Promise<number>;
   setWindowVisible: (visible: boolean) => void;
   setSettingsOpen: (open: boolean) => void;
+  setAlwaysOnTop: (enabled: boolean) => void;
+  toggleAlwaysOnTop: () => void;
+  setTimerActive: (active: boolean) => void;
+  toggleTimer: () => void;
+  setTimerIntervalMinutes: (minutes: number) => void;
   getActiveCatalog: () => Quote[];
   getFilteredQuotes: () => Quote[];
   getCurrentQuote: () => Quote | null;
@@ -73,6 +81,9 @@ export const useQuotesStore = create<QuotesState>()(
       isSyncingRemote: false,
       isWindowVisible: true,
       isSettingsOpen: false,
+      isAlwaysOnTop: false,
+      isTimerActive: false,
+      timerIntervalMinutes: 5,
 
       setApiSource: (source: QuoteApiSource) => {
         set({ apiSource: source, currentDynamicQuote: null });
@@ -236,6 +247,24 @@ export const useQuotesStore = create<QuotesState>()(
 
       setSettingsOpen: (open) => set({ isSettingsOpen: open }),
 
+      setAlwaysOnTop: (enabled) => {
+        set({ isAlwaysOnTop: enabled });
+      },
+
+      toggleAlwaysOnTop: () => {
+        set((state) => ({ isAlwaysOnTop: !state.isAlwaysOnTop }));
+      },
+
+      setTimerActive: (active) => set({ isTimerActive: active }),
+
+      toggleTimer: () =>
+        set((state) => ({ isTimerActive: !state.isTimerActive })),
+
+      setTimerIntervalMinutes: (minutes) => {
+        const sanitized = Math.max(1, Math.min(1440, Math.round(minutes) || 1));
+        set({ timerIntervalMinutes: sanitized });
+      },
+
       getActiveCatalog: () => {
         const { apiSource, remoteQuotes, localQuotes } = get();
         if (apiSource === 'github-cdn' && remoteQuotes.length > 0) {
@@ -289,6 +318,9 @@ export const useQuotesStore = create<QuotesState>()(
         selectedCategories: state.selectedCategories,
         selectedAuthor: state.selectedAuthor,
         remoteQuotes: state.remoteQuotes,
+        isAlwaysOnTop: state.isAlwaysOnTop,
+        isTimerActive: state.isTimerActive,
+        timerIntervalMinutes: state.timerIntervalMinutes,
       }),
     }
   )

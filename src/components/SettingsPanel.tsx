@@ -67,6 +67,12 @@ export const SettingsContent: React.FC<SettingsContentProps> = ({
     clearFilters,
     getActiveCatalog,
     getFilteredQuotes,
+    isAlwaysOnTop,
+    setAlwaysOnTop,
+    isTimerActive,
+    setTimerActive,
+    timerIntervalMinutes,
+    setTimerIntervalMinutes,
   } = useQuotesStore();
 
   const [authorQuery, setAuthorQuery] = useState('');
@@ -410,6 +416,177 @@ export const SettingsContent: React.FC<SettingsContentProps> = ({
                 </Pressable>
               );
             })}
+          </View>
+        </View>
+
+        {/* Ventana y Temporizador de Citas */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: theme.textMuted }]}>
+            VENTANA Y ROTACIÓN AUTOMÁTICA
+          </Text>
+
+          <View
+            style={[
+              styles.cardBox,
+              {
+                backgroundColor: theme.windowInnerBg,
+                borderTopColor: theme.innerBevelShadow,
+                borderLeftColor: theme.innerBevelShadow,
+                borderBottomColor: theme.innerBevelHighlight,
+                borderRightColor: theme.innerBevelHighlight,
+              },
+            ]}
+          >
+            {/* Always on top toggle */}
+            <View style={styles.rowBetween}>
+              <View style={{ flex: 1, paddingRight: 8 }}>
+                <Text style={[styles.fieldLabel, { color: theme.textPrimary }]}>
+                  📌 Siempre al frente (Always on top)
+                </Text>
+                <Text style={{ fontSize: 11, color: theme.textMuted }}>
+                  Mantiene la ventana de citas flotando por encima de otras aplicaciones.
+                </Text>
+              </View>
+              <Pressable
+                onPress={() => setAlwaysOnTop(!isAlwaysOnTop)}
+                style={[
+                  styles.miniBtn,
+                  {
+                    backgroundColor: isAlwaysOnTop
+                      ? theme.accent
+                      : theme.buttonBg,
+                    borderTopColor: isAlwaysOnTop
+                      ? theme.accent
+                      : theme.buttonBorderLight,
+                    borderLeftColor: isAlwaysOnTop
+                      ? theme.accent
+                      : theme.buttonBorderLight,
+                    borderBottomColor: isAlwaysOnTop
+                      ? theme.accent
+                      : theme.buttonBorderDark,
+                    borderRightColor: isAlwaysOnTop
+                      ? theme.accent
+                      : theme.buttonBorderDark,
+                  },
+                ]}
+              >
+                <Text
+                  style={{
+                    fontSize: 12,
+                    fontWeight: '700',
+                    color: isAlwaysOnTop ? theme.accentText : theme.textPrimary,
+                  }}
+                >
+                  {isAlwaysOnTop ? 'ACTIVO' : 'INACTIVO'}
+                </Text>
+              </Pressable>
+            </View>
+
+            <View
+              style={[
+                styles.innerDivider,
+                { backgroundColor: theme.divider },
+              ]}
+            />
+
+            {/* Auto-rotation timer toggle & interval */}
+            <View style={styles.rowBetween}>
+              <View style={{ flex: 1, paddingRight: 8 }}>
+                <Text style={[styles.fieldLabel, { color: theme.textPrimary }]}>
+                  ⏱ Cambio automático de cita (Timer)
+                </Text>
+                <Text style={{ fontSize: 11, color: theme.textMuted }}>
+                  Rotar la cita mostrada periódicamente según el intervalo configurado.
+                </Text>
+              </View>
+              <Pressable
+                onPress={() => setTimerActive(!isTimerActive)}
+                style={[
+                  styles.miniBtn,
+                  {
+                    backgroundColor: isTimerActive
+                      ? theme.accent
+                      : theme.buttonBg,
+                    borderTopColor: isTimerActive
+                      ? theme.accent
+                      : theme.buttonBorderLight,
+                    borderLeftColor: isTimerActive
+                      ? theme.accent
+                      : theme.buttonBorderLight,
+                    borderBottomColor: isTimerActive
+                      ? theme.accent
+                      : theme.buttonBorderDark,
+                    borderRightColor: isTimerActive
+                      ? theme.accent
+                      : theme.buttonBorderDark,
+                  },
+                ]}
+              >
+                <Text
+                  style={{
+                    fontSize: 12,
+                    fontWeight: '700',
+                    color: isTimerActive ? theme.accentText : theme.textPrimary,
+                  }}
+                >
+                  {isTimerActive ? 'ACTIVO' : 'INACTIVO'}
+                </Text>
+              </Pressable>
+            </View>
+
+            <Text
+              style={[
+                styles.fieldLabel,
+                { color: theme.textSecondary, marginTop: 10, marginBottom: 6 },
+              ]}
+            >
+              Frecuencia de cambio (en minutos): {timerIntervalMinutes} min
+            </Text>
+
+            <View style={styles.segmentedRow}>
+              {[1, 3, 5, 10, 15, 30].map((min) => {
+                const isSelected = timerIntervalMinutes === min;
+                return (
+                  <Pressable
+                    key={min}
+                    onPress={() => setTimerIntervalMinutes(min)}
+                    style={[
+                      styles.segmentedBtn,
+                      {
+                        backgroundColor: isSelected
+                          ? theme.accent
+                          : theme.buttonBg,
+                        borderTopColor: isSelected
+                          ? theme.accent
+                          : theme.buttonBorderLight,
+                        borderLeftColor: isSelected
+                          ? theme.accent
+                          : theme.buttonBorderLight,
+                        borderBottomColor: isSelected
+                          ? theme.accent
+                          : theme.buttonBorderDark,
+                        borderRightColor: isSelected
+                          ? theme.accent
+                          : theme.buttonBorderDark,
+                      },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.segmentedText,
+                        {
+                          color: isSelected
+                            ? theme.accentText
+                            : theme.textPrimary,
+                        },
+                      ]}
+                    >
+                      {min} m
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
           </View>
         </View>
 

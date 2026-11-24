@@ -13,3 +13,10 @@ export function closeApp(): void {
     return;
   }
 }
+
+export function setAlwaysOnTop(alwaysOnTop: boolean): void {
+  if (Platform.OS === 'macos' && NativeWindowControl?.setAlwaysOnTop) {
+    NativeWindowControl.setAlwaysOnTop(alwaysOnTop);
+  }
+}
+

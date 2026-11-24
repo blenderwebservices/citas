@@ -15,6 +15,7 @@ import { AppTheme } from '../theme/themes';
 import { Quote } from '../types/quote';
 import { clampValue, computeSafeDragBounds } from '../utils/quoteFilter';
 import { QuoteApiSource } from '../types/quote';
+import { useQuotesStore } from '../store/useQuotesStore';
 import { SettingsContent } from './SettingsPanel';
 
 interface BeveledWindowProps {
@@ -44,35 +45,44 @@ const BevelButton: React.FC<{
   theme: AppTheme;
   symbol: string;
   symbolColor?: string;
-}> = ({ onPress, accessibilityLabel, theme, symbol, symbolColor }) => (
+  isActive?: boolean;
+}> = ({ onPress, accessibilityLabel, theme, symbol, symbolColor, isActive = false }) => (
   <Pressable
     onPress={onPress}
-    accessibilityRole="button"
+    accessibilityRole={isActive !== undefined ? 'checkbox' : 'button'}
+    accessibilityState={isActive !== undefined ? { checked: isActive } : undefined}
     accessibilityLabel={accessibilityLabel}
     hitSlop={4}
-    style={({ pressed }) => [
-      styles.controlButton,
-      {
-        backgroundColor: theme.buttonBg,
-        borderTopColor: pressed
-          ? theme.buttonBorderDark
-          : theme.buttonBorderLight,
-        borderLeftColor: pressed
-          ? theme.buttonBorderDark
-          : theme.buttonBorderLight,
-        borderBottomColor: pressed
-          ? theme.buttonBorderLight
-          : theme.buttonBorderDark,
-        borderRightColor: pressed
-          ? theme.buttonBorderLight
-          : theme.buttonBorderDark,
-      },
-    ]}
+    style={({ pressed }) => {
+      const isDepressed = isActive || pressed;
+      return [
+        styles.controlButton,
+        {
+          backgroundColor: isActive ? theme.accent : theme.buttonBg,
+          borderTopColor: isDepressed
+            ? theme.buttonBorderDark
+            : theme.buttonBorderLight,
+          borderLeftColor: isDepressed
+            ? theme.buttonBorderDark
+            : theme.buttonBorderLight,
+          borderBottomColor: isDepressed
+            ? theme.buttonBorderLight
+            : theme.buttonBorderDark,
+          borderRightColor: isDepressed
+            ? theme.buttonBorderLight
+            : theme.buttonBorderDark,
+        },
+      ];
+    }}
   >
     <Text
       style={[
         styles.controlButtonText,
-        { color: symbolColor ?? theme.textPrimary },
+        {
+          color: isActive
+            ? theme.accentText
+            : (symbolColor ?? theme.textPrimary),
+        },
       ]}
     >
       {symbol}
@@ -93,6 +103,14 @@ export const BeveledWindow: React.FC<BeveledWindowProps> = ({
   onClose,
   onClearFilters,
 }) => {
+  const {
+    isAlwaysOnTop,
+    toggleAlwaysOnTop,
+    isTimerActive,
+    toggleTimer,
+    timerIntervalMinutes,
+  } = useQuotesStore();
+
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
 
   const targetWidth = Math.min(screenWidth - 32, 380);
@@ -339,6 +357,28 @@ export const BeveledWindow: React.FC<BeveledWindowProps> = ({
             />
           ) : (
             <>
+              <BevelButton
+                onPress={toggleAlwaysOnTop}
+                accessibilityLabel={
+                  isAlwaysOnTop
+                    ? 'Desactivar siempre al frente (Activo)'
+                    : 'Activar siempre al frente (Inactivo)'
+                }
+                theme={theme}
+                symbol="📌"
+                isActive={isAlwaysOnTop}
+              />
+              <BevelButton
+                onPress={toggleTimer}
+                accessibilityLabel={
+                  isTimerActive
+                    ? `Desactivar temporizador (${timerIntervalMinutes} min - Activo)`
+                    : `Activar temporizador (${timerIntervalMinutes} min - Inactivo)`
+                }
+                theme={theme}
+                symbol="⏱"
+                isActive={isTimerActive}
+              />
               {quote && (
                 <BevelButton
                   onPress={handleCopyAll}

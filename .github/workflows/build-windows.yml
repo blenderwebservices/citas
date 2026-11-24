@@ -1,0 +1,71 @@
+name: Build Windows App (.exe)
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'src/**'
+      - 'windows/**'
+      - 'App.tsx'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/build-windows.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    name: Build Windows Release
+    runs-on: windows-2022
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Bundle JavaScript for Windows
+        run: |
+          mkdir -p windows/Citas/Bundle
+          npx react-native bundle --platform windows --entry-file index.js --bundle-output windows/Citas/Bundle/index.windows.bundle --assets-dest windows/Citas/Bundle --dev false
+
+      - name: Build Windows Citas (Release x64)
+        run: |
+          msbuild windows/Citas.sln /p:Configuration=Release /p:Platform=x64 /p:AppxBundle=Never /p:BuildProjectReferences=true /m
+
+      - name: Prepare Windows Executable Artifacts
+        shell: bash
+        run: |
+          mkdir -p dist/windows
+          # Copiar el binario principal y sus DLLs dependientes
+          if [ -d "windows/Citas/x64/Release/Citas" ]; then
+            cp -r windows/Citas/x64/Release/Citas/* dist/windows/
+          elif [ -d "windows/target/x64/Release" ]; then
+            cp -r windows/target/x64/Release/* dist/windows/
+          elif [ -d "windows/x64/Release" ]; then
+            cp -r windows/x64/Release/* dist/windows/
+          fi
+          
+          # Crear archivo ZIP listo para descargar
+          cd dist
+          7z a -tzip Citas-Windows-x64.zip windows/
+
+      - name: Upload Windows Build Artifact (.exe & dependencies)
+        uses: actions/upload-artifact@v4
+        with:
+          name: Citas-Windows-x64
+          path: dist/Citas-Windows-x64.zip
+          retention-days: 14

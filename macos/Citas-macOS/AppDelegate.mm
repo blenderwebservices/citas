@@ -98,4 +98,18 @@ RCT_EXPORT_METHOD(closeApp)
   });
 }
 
+RCT_EXPORT_METHOD(setAlwaysOnTop:(BOOL)alwaysOnTop)
+{
+  dispatch_async(dispatch_get_main_queue(), ^{
+    AppDelegate *delegate = (AppDelegate *)[NSApp delegate];
+    NSWindow *targetWindow = delegate.window ?: [NSApp keyWindow] ?: [NSApp mainWindow];
+    if (!targetWindow && [NSApp windows].count > 0) {
+      targetWindow = [NSApp windows].firstObject;
+    }
+    if (targetWindow) {
+      [targetWindow setLevel:(alwaysOnTop ? NSFloatingWindowLevel : NSNormalWindowLevel)];
+    }
+  });
+}
+
 @end

@@ -1,10 +1,10 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { StatusBar, StyleSheet, useColorScheme, View } from 'react-native';
 import { BeveledWindow } from './src/components/BeveledWindow';
 import { RestoreWindowButton } from './src/components/RestoreWindowButton';
 import { useQuotesStore } from './src/store/useQuotesStore';
 import { themes } from './src/theme/themes';
-import { closeApp } from './src/utils/windowControl';
+import { closeApp, setAlwaysOnTop } from './src/utils/windowControl';
 import type { ThemeMode } from './src/types/quote';
 
 export default function App() {
@@ -17,12 +17,30 @@ export default function App() {
     selectedAuthor,
     isWindowVisible,
     isSettingsOpen,
+    isAlwaysOnTop,
+    isTimerActive,
+    timerIntervalMinutes,
     nextQuote,
     setWindowVisible,
     setSettingsOpen,
     clearFilters,
     getCurrentQuote,
   } = useQuotesStore();
+
+  useEffect(() => {
+    setAlwaysOnTop(isAlwaysOnTop);
+  }, [isAlwaysOnTop]);
+
+  useEffect(() => {
+    if (!isTimerActive) return;
+
+    const intervalMs = Math.max(1, timerIntervalMinutes) * 60 * 1000;
+    const intervalId = setInterval(() => {
+      nextQuote();
+    }, intervalMs);
+
+    return () => clearInterval(intervalId);
+  }, [isTimerActive, timerIntervalMinutes, nextQuote]);
 
   const resolvedMode: ThemeMode =
     themePreference === 'system'
